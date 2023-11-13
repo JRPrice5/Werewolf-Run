@@ -1,28 +1,36 @@
 import tkinter as tk
 from tkinter import ttk
 
-root = tk.Tk()
+# ensure pep 8 formatting
+# comment code
+window = tk.Tk()
 
-def displayWindow():
-    root.geometry("800x600")
-    root.configure(background="#b3ffff")
-    root.title("Alien Annihilator")
-    menuLoop()
 
-def menuLoop():
-    startButton = ttk.Button(root, text="START", command=startGame())
+class AlienAnnihilator:
+    def __init__(self, master):
+        self.master = master  # initialises master window
+        self.gameStart = False  # the game loop doesn't initially run
+        self.configure_window()
+        self.menu()
 
-def startGame():
-    global gameScreen
-    gameScreen = True
+    def configure_window(self):
+        self.master.geometry("800x600")
+        self.master.configure(background="#b3ffff")
+        window.title("Alien Annihilator")
 
-def gameLoop():
-    update()
+    def menu(self):
+        start_button = ttk.Button(window, text="START", command=self.start_game())
+        start_button.pack()
 
-def update():
-    pass
+    def start_game(self):
+        self.gameStart = True
 
-displayWindow()
-if gameScreen:
-    gameLoop()
-root.mainloop()
+    def game_loop(self):
+        self.update()
+
+    def update(self):
+        pass
+
+
+game = AlienAnnihilator(window)
+window.mainloop()
