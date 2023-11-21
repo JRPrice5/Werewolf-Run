@@ -1,3 +1,4 @@
+import random
 import tkinter as tk
 from tkinter import ttk
 
@@ -11,9 +12,10 @@ class AlienAnnihilator:
     def __init__(self, master):
         self.BUTTON_WIDTH = 15
         self.BUTTON_HEIGHT = 2
+        self.GROUND_HEIGHT = 876
 
         self.score = 0
-        self.scroll_speed = 1
+        self.scroll_speed = -1
 
         self.obstacles = []
 
@@ -122,6 +124,7 @@ class AlienAnnihilator:
             self.player.update()
             self.master.after(10, self.game_loop)
             self.update_score()
+            self.update_obstacles()
 
     def update_score(self):
         if not self.is_paused and self.game_start is True:
@@ -130,13 +133,18 @@ class AlienAnnihilator:
             self.master.after(1000, self.update_score)
 
     def generate_obstacle(self):
-        pass
+        width = random.randint(100, 200)
+        height = random.randint(100, 200)
+        obstacle = canvas.create_rectangle(self.canvas.winfo_width() + width, self.GROUND_HEIGHT, width, height,
+                                           fill="red")
+        self.obstacles.append(obstacle)
 
     def update_obstacles(self):
-        pass
+        for obstacle in self.obstacles:
+            self.canvas.move(obstacle, self.scroll_speed)
 
     def append_scroll_speed(self, dv):
-        self.scroll_speed += dv
+        self.scroll_speed -= dv
 
 
 class Player:
