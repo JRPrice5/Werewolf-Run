@@ -14,8 +14,8 @@ class AlienAnnihilator:
         self.BUTTON_HEIGHT = 2
         self.GROUND_HEIGHT = 876
 
-        self.score = 0
-        self.scroll_speed = -1
+        self.time = 0
+        self.scroll_speed = -5
 
         self.obstacles = []
 
@@ -46,7 +46,7 @@ class AlienAnnihilator:
                                      command=self.menu)
         self.resume_button = tk.Button(self.master, text="RESUME", width=self.BUTTON_WIDTH, height=self.BUTTON_HEIGHT,
                                        command=self.resume)
-        self.score_label = tk.Label(self.master, text="Score: 0", fg="white", bg="black", font=("Arial Bold", 32))
+        self.time_label = tk.Label(self.master, text="Time Alive: 0", fg="white", bg="black", font=("Arial Bold", 32))
         self.menu()
 
     def configure_window(self):
@@ -60,8 +60,8 @@ class AlienAnnihilator:
         if self.player is not None:
             self.canvas.delete(self.player.get_id())
             self.player = None
-            self.score_label.destroy()
-            self.score = 0
+            self.time_label.destroy()
+            self.time = 0
         self.canvas.delete("all")
         self.canvas.config(bg="blue")
         self.game_start = False
@@ -110,51 +110,62 @@ class AlienAnnihilator:
         self.canvas.config(bg="black")
         self.configure_window()
         self.master.geometry("1920x1080")
-        self.score_label = tk.Label(self.master, text="Score: 0", fg="white", bg="black", font=("Arial Bold", 32))
-        self.score_label.place(x=100, y=100)
+        self.time_label = tk.Label(self.master, text="Time Alive: 0", fg="white", bg="black", font=("Arial Bold", 32))
+        self.time_label.place(x=100, y=100)
         self.player = Player(self.canvas)
         self.master.bind("<KeyPress-Escape>", self.pause)
         self.master.bind("<Left>", self.left)
         self.master.bind("<Right>", self.right)
         self.master.bind("<Up>", self.up)
-        self.master.after(10, self.game_loop())
+
+        self.master.after(10, self.generate_obstacles)
+        self.master.after(10, self.game_loop)
+        self.master.after(1000, self.update_time)
 
     def game_loop(self):
         if self.player is not None:
             self.player.update()
             self.master.after(10, self.game_loop)
-            self.update_score()
             self.update_obstacles()
 
-    def update_score(self):
+    def update_time(self):
         if not self.is_paused and self.game_start is True:
-            self.score += 1
-            self.score_label.config(text=f"Score: {self.score}")
-            self.master.after(1000, self.update_score)
+            self.time += 1
+            self.time_label.config(text=f"Time Alive: {self.time}")
+            self.master.after(1000, self.update_time)
 
-    def generate_obstacle(self):
-        width = random.randint(100, 200)
-        height = random.randint(100, 200)
-        obstacle = canvas.create_rectangle(self.canvas.winfo_width() + width, self.GROUND_HEIGHT, width, height,
-                                           fill="red")
-        self.obstacles.append(obstacle)
+    def generate_obstacles(self):
+        if self.game_start and not self.is_paused:
+            width = random.randint(100, 200)
+            height = random.randint(100, 200)
+            x = self.canvas.winfo_width() + width
+            y = self.GROUND_HEIGHT - height
+            obstacle = self.canvas.create_rectangle(x, y, x + width, y + height, fill="red")
+            self.obstacles.append(obstacle)
+            self.master.after(10000, lambda: self.delete_obstacle(obstacle))
+        self.master.after(random.randint(1500, 6000), self.generate_obstacles)
+
+    def delete_obstacle(self, obstacle):
+        self.canvas.delete(obstacle)
+        self.obstacles.remove(obstacle)
 
     def update_obstacles(self):
         for obstacle in self.obstacles:
-            self.canvas.move(obstacle, self.scroll_speed)
+            self.canvas.move(obstacle, self.scroll_speed, 0)
 
     def append_scroll_speed(self, dv):
         self.scroll_speed -= dv
+        update_obstacles()
 
 
 class Player:
     def __init__(self, canvas):
-        self.id = canvas.create_rectangle(0, 0, 100, 100, fill="white")
+        self.id = canvas.create_rectangle(0, 776, 100, 876, fill="white")
         self.canvas = canvas
         self.velocity = [0, 0]
         self.gravity = 0.25
-        self.speed = 5
-        self.jump_speed = -10
+        self.speed = 4
+        self.jump_speed = -12
         self.is_jumping = False
         self.is_paused = False
 
