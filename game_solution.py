@@ -1,6 +1,5 @@
-import random
+import random, time
 import tkinter as tk
-from tkinter import ttk
 from PIL import Image, ImageTk
 
 # ensure pep 8 formatting
@@ -13,17 +12,14 @@ class AlienAnnihilator:
     def __init__(self, window):
         self.BUTTON_WIDTH = 15
         self.BUTTON_HEIGHT = 2
-        self.GROUND_HEIGHT = 876
+        self.GROUND_HEIGHT = 889
 
         self.name = ""
         self.time = 0
-        # self.scroll_speed = -5
 
         self.enemies = []
-        self.enemy_spawn_range = [3000, 4500]
-        self.enemy_width = 100
-        self.enemy_height = 100
-        self.enemy_speed = -1.5
+        self.enemy_spawn_range = [2500, 4000]
+        self.enemy_speed = -1
 
         self.pause_label_id = None
         self.resume_button_id = None
@@ -41,23 +37,27 @@ class AlienAnnihilator:
         self.canvas = tk.Canvas(self.master_window, width=800, height=600)
         self.canvas.place(x=50, y=50)
 
-        self.start_button = tk.Button(self.master_window, text="START", width=self.BUTTON_WIDTH,
-                                      height=self.BUTTON_HEIGHT, command=self.input_name)
+        self.start_button = tk.Button(self.master_window, text="START GAME", width=self.BUTTON_WIDTH,
+                                      height=self.BUTTON_HEIGHT, command=self.input_name, font=("Arial Bold", 16))
+        self.load_button = tk.Button(self.master_window, text="LOAD GAME", width=self.BUTTON_WIDTH,
+                                      height=self.BUTTON_HEIGHT, command=None, font=("Arial Bold", 16))
         self.leaderboard_label = None
         self.leaderboard_button = tk.Button(self.master_window, text="LEADERBOARD", width=self.BUTTON_WIDTH,
-                                            height=self.BUTTON_HEIGHT, command=self.show_leaderboard)
+                                            height=self.BUTTON_HEIGHT, command=self.show_leaderboard,
+                                            font=("Arial Bold", 16))
         self.leaderboard_frame = None
         self.bindings_button = tk.Button(self.master_window, text="KEY BINDINGS", width=self.BUTTON_WIDTH,
-                                         height=self.BUTTON_HEIGHT, command=self.show_key_bindings)
+                                         height=self.BUTTON_HEIGHT, command=self.show_key_bindings,
+                                         font=("Arial Bold", 16))
         self.quit_button = tk.Button(self.master_window, text="QUIT", width=self.BUTTON_WIDTH,
-                                     height=self.BUTTON_HEIGHT,
-                                     command=self.master_window.destroy)
+                                     height=self.BUTTON_HEIGHT, command=self.master_window.destroy,
+                                     font=("Arial Bold", 16))
         self.menu_button = tk.Button(self.master_window, text="MENU", width=self.BUTTON_WIDTH,
-                                     height=self.BUTTON_HEIGHT,
-                                     command=self.menu)
+                                     height=self.BUTTON_HEIGHT, command=self.menu, font=("Arial Bold", 16))
+        self.save_button = tk.Button(self.master_window, text="SAVE", width=self.BUTTON_WIDTH,
+                                     height=self.BUTTON_HEIGHT, command=None, font=("Arial Bold", 16))
         self.resume_button = tk.Button(self.master_window, text="RESUME", width=self.BUTTON_WIDTH,
-                                       height=self.BUTTON_HEIGHT,
-                                       command=self.resume)
+                                       height=self.BUTTON_HEIGHT, command=self.resume, font=("Arial Bold", 16))
         self.time_label = tk.Label(self.master_window, text="0", fg="white", bg="black", bd=0,
                                    font=("Arial Bold", 64))
 
@@ -65,7 +65,8 @@ class AlienAnnihilator:
                                          font=("Arial Bold", 32))
         self.name_label = tk.Label(self.master_window, text="", fg="white", bg="black", font=("Arial Bold", 32))
         self.name_entry = tk.Entry(self.master_window, width=30)
-        self.submit_button = tk.Button(self.master_window, text="Submit", command=self.submit_name)
+        self.submit_button = tk.Button(self.master_window, text="Submit", command=self.submit_name,
+                                       font=("Arial Bold", 16))
 
         self.player_states = {"Run": 8, "Jump": 12, "Dead": 4, "Walk": 8, "Idle": 6}
         self.player_state = "Run"
@@ -103,7 +104,7 @@ class AlienAnnihilator:
         self.master_window.title("Werewolf Run")
 
     def set_background(self, is_running=True):
-        self.canvas.delete("all")  # Clear the canvas
+        self.canvas.delete("all")
         if is_running:
             for image in self.background_images:
                 self.canvas.create_image((0, 0), image=image, anchor="nw")
@@ -129,10 +130,11 @@ class AlienAnnihilator:
         self.canvas.pack(fill="both", expand=True)
         self.configure_window()
         self.canvas.create_text(960, 250, text="WEREWOLF RUN", fill="white", font=("Arial Bold", 80))
-        self.canvas.create_window(960, 450, window=self.start_button)
-        self.canvas.create_window(960, 500, window=self.leaderboard_button)
-        self.canvas.create_window(960, 550, window=self.bindings_button)
-        self.canvas.create_window(960, 600, window=self.quit_button)
+        self.canvas.create_window(960, 400, window=self.start_button)
+        self.canvas.create_window(960, 475, window=self.load_button)
+        self.canvas.create_window(960, 550, window=self.leaderboard_button)
+        self.canvas.create_window(960, 625, window=self.bindings_button)
+        self.canvas.create_window(960, 700, window=self.quit_button)
         self.configure_window()
 
     def pause(self, event=None):
@@ -146,8 +148,9 @@ class AlienAnnihilator:
             self.pause_label_id = self.canvas.create_text(960, 350, text="PAUSE MENU", fill="white",
                                                           font=("Arial Bold", 40))
             self.resume_button_id = self.canvas.create_window(960, 450, window=self.resume_button)
-            self.menu_button_id = self.canvas.create_window(960, 500, window=self.menu_button)
-            self.quit_button_id = self.canvas.create_window(960, 550, window=self.quit_button)
+            self.menu_button_id = self.canvas.create_window(960, 525, window=self.save_button)
+            self.menu_button_id = self.canvas.create_window(960, 600, window=self.menu_button)
+            self.quit_button_id = self.canvas.create_window(960, 675, window=self.quit_button)
 
     def resume(self, event=None):
         if self.player is not None and self.is_paused:
@@ -163,16 +166,18 @@ class AlienAnnihilator:
             self.master_window.after(1000, self.update_time)
 
     def left(self, event):
-        if self.player.get_state() == "Run" or self.player.get_state() == "Idle":
+        if (self.player.get_state() == "Run" or self.player.get_state() == "Idle")\
+                and self.player.get_state() != "Dead":
             self.player.set_state("Walk")
             self.player.set_current_frame(8)
             self.player.set_sprite_frames()
             self.player.set_horizontal_velocity(-2 * self.player.get_speed() / 3)
         elif self.player.get_is_jumping():
-            self.player.set_horizontal_velocity(-2 * self.player.get_speed() / 3)
+            self.player.set_horizontal_velocity(-3 * self.player.get_speed() / 5)
 
     def right(self, event):
-        if self.player.get_state() == "Walk" or self.player.get_state() == "Idle":
+        if (self.player.get_state() == "Walk" or self.player.get_state() == "Idle")\
+                and self.player.get_state() != "Dead":
             self.player.set_state("Run")
             self.player.set_current_frame(8)
             self.player.set_sprite_frames()
@@ -181,7 +186,7 @@ class AlienAnnihilator:
             self.player.set_horizontal_velocity(self.player.get_speed())
 
     def up(self, event):
-        if not self.player.get_is_jumping() and self.player.get_state != "Death":
+        if not self.player.get_is_jumping() and self.player.get_state() != "Dead":
             self.player.set_state("Jump")
             self.player.set_sprite_frames()
             self.player.set_current_frame(0)
@@ -190,6 +195,7 @@ class AlienAnnihilator:
     def start_game(self):
         self.canvas.delete("all")
         self.canvas.config(bg="black")
+        self.time = 0
 
         self.set_background(is_running=True)
 
@@ -202,9 +208,17 @@ class AlienAnnihilator:
         self.time_label.place(relx=0.5, rely=0.2, anchor="center")
         self.player = Player(self.canvas, self.player_frames)
 
+        # self.master_window.bind(f"<{self.left}>", self.left)
+        # self.master_window.bind(f"<{self.right}>", self.right)
+        # self.master_window.bind(f"<{self.up}>", self.up)
+        # self.master_window.bind(f"<{self.pause}>", self.pause)
+        # self.master_window.bind(f"<{self.boss}>", self.on_boss_key)
+        # self.master_window.bind(f"<{self.cheat}>", self.cheat)
         self.master_window.bind("<Left>", self.left)
         self.master_window.bind("<Right>", self.right)
         self.master_window.bind("<Up>", self.up)
+        self.master_window.bind("<Escape>", self.pause)
+        # self.time = 105
 
         self.master_window.after(10, self.generate_enemies)
         self.master_window.after(10, self.game_loop)
@@ -216,6 +230,12 @@ class AlienAnnihilator:
     def input_name(self):
         self.canvas.delete("all")
         self.canvas.config(bg="black")
+        self.enter_name_label = tk.Label(self.master_window, text="ENTER NAME", fg="white", bg="black",
+                                         font=("Arial Bold", 32))
+        self.name_label = tk.Label(self.master_window, text="", fg="white", bg="black", font=("Arial Bold", 32))
+        self.name_entry = tk.Entry(self.master_window, width=30)
+        self.submit_button = tk.Button(self.master_window, text="Submit", command=self.submit_name,
+                                       font=("Arial Bold", 10))
         self.enter_name_label.place(relx=0.5, rely=0.4, anchor="center")
         self.name_entry.place(relx=0.5, rely=0.5, anchor="center")
         self.submit_button.place(relx=0.5, rely=0.55, anchor="center")
@@ -237,6 +257,7 @@ class AlienAnnihilator:
             self.player.update()
             for enemy in self.enemies:
                 enemy.update()
+            self.check_collisions()
             self.master_window.after(10, self.game_loop)
 
     def update_time(self):
@@ -291,7 +312,7 @@ class AlienAnnihilator:
 
             self.enemies.append(enemy)
             self.master_window.after(100, enemy.animate)
-            self.master_window.after(13000, lambda: self.delete_enemy(enemy))
+            self.master_window.after(18000, lambda: self.delete_enemy(enemy))
             self.master_window.after(random.randint(self.enemy_spawn_range[0], self.enemy_spawn_range[1]),
                                      self.generate_enemies)
 
@@ -301,10 +322,10 @@ class AlienAnnihilator:
 
     def increase_difficulty(self):
         if self.game_start and not self.is_paused:
-            self.enemy_speed -= 1.5
+            self.enemy_speed -= 0.85
             if self.enemy_spawn_range[0] >= 1000:
-                self.enemy_spawn_range[0] -= 250
-                self.enemy_spawn_range[1] -= 250
+                self.enemy_spawn_range[0] -= 500
+                self.enemy_spawn_range[1] -= 500
             self.master_window.after(15000, self.increase_difficulty)
 
     def game_over(self):
@@ -314,6 +335,9 @@ class AlienAnnihilator:
         self.player = None
         self.time_label.destroy()
         self.canvas.delete("all")
+        self.enemy_spawn_range = [5500, 7000]
+        self.enemy_speed = -1
+        self.canvas.create_text(960, 540, text="GAME OVER", fill="red", font=("Arial Bold", 128))
 
         leaderboard = {}
         file = open("leaderboard.txt", "r")
@@ -326,6 +350,8 @@ class AlienAnnihilator:
         file = open("leaderboard.txt", "w")
         for entry in sorted(leaderboard.items(), key=lambda x: x[1], reverse=True):
             file.write(f"{entry[0]},{entry[1]}\n")
+
+        self.master_window.after(2000, self.menu)
 
     def show_leaderboard(self):
         self.canvas.delete("all")
@@ -373,7 +399,38 @@ class AlienAnnihilator:
         pass
 
     def check_collisions(self):
-        pass
+        if self.player is not None and not self.is_paused:
+            player_bbox = self.canvas.bbox(self.player.get_id())
+            for enemy in self.enemies:
+                enemy_bbox = self.canvas.bbox(enemy.get_id())
+                if enemy_bbox is not None and player_bbox is not None:
+                    if self.has_collision(player_bbox, enemy_bbox):
+                        self.game_start = False
+                        self.master_window.bind("<Escape>", None)
+                        for enemy in self.enemies:
+                            enemy.pause()
+                        self.player.set_falling(True)
+                        self.player_fall()
+                        if self.player.get_state() != "Dead":
+                            self.player.set_state("Dead")
+                            self.player.set_current_frame(0)
+                            self.player.set_sprite_frames()
+                            self.master_window.after(2500, self.game_over)
+
+    def has_collision(self, player_bbox, enemy_bbox):
+        return (
+                player_bbox[0] + 45 <= enemy_bbox[2] - 45 and
+                player_bbox[2] - 45 >= enemy_bbox[0] + 45 and
+                player_bbox[1] + 45 <= enemy_bbox[3] - 45 and
+                player_bbox[3] - 45 >= enemy_bbox[1] + 45
+        )
+
+    def player_fall(self):
+        if self.player is not None:
+            if self.player.is_falling:
+                self.player.update()
+                self.master_window.after(10, self.player_fall)
+
 
 
 class Player:
@@ -397,10 +454,11 @@ class Player:
         self.jump_speed = -16
         self.is_jumping = False
         self.is_paused = False
+        self.is_falling = False
 
     def update(self):
-        if not self.is_paused:
-            bbox = self.canvas.bbox(self.id)
+        bbox = self.canvas.bbox(self.id)
+        if not self.is_paused and self.state != "Dead":
             if bbox[3] >= ((4 * self.canvas.winfo_height() / 5) + 25) and self.velocity[1] >= 0:
                 self.velocity[1] = 0
                 self.is_jumping = False
@@ -428,6 +486,16 @@ class Player:
                 self.set_horizontal_velocity(0)
 
             self.canvas.move(self.id, self.velocity[0], self.velocity[1])
+        elif self.is_falling:
+            self.velocity[0] = 0
+            if bbox[3] >= 899:
+                self.velocity[1] = 0
+                self.is_falling = False
+            else:
+                self.velocity[1] = self.gravity
+            self.canvas.move(self.id, self.velocity[0], self.velocity[1])
+        elif self.state == "Dead":
+            self.velocity[0] = 0
 
     def pause(self):
         self.is_paused = True
@@ -445,6 +513,9 @@ class Player:
         if not self.is_paused:
             if self.state == "Walk":
                 self.current_frame = (self.current_frame - 1) % len(self.sprite_frames)
+            elif self.state == "Dead":
+                if self.current_frame < 3:
+                    self.current_frame = (self.current_frame + 1)
             else:
                 self.current_frame = (self.current_frame + 1) % len(self.sprite_frames)
             self.canvas.itemconfig(self.id, image=self.sprite_frames[self.current_frame])
@@ -459,14 +530,8 @@ class Player:
     def get_id(self):
         return self.id
 
-    def get_velocity(self):
-        return self.velocity
-
     def get_speed(self):
         return self.speed
-
-    def get_horizontal_velocity(self):
-        return self.velocity[0]
 
     def set_horizontal_velocity(self, v):
         self.velocity[0] = v
@@ -487,6 +552,9 @@ class Player:
 
     def set_state(self, state):
         self.state = state
+
+    def set_falling(self, is_falling):
+        self.is_falling = is_falling
 
 
 class Enemy:
@@ -534,9 +602,6 @@ class Enemy:
 
     def get_id(self):
         return self.id
-
-    def get_current_frame(self):
-        return self.current_frame
 
     def set_state(self, state):
         self.state = state
