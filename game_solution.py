@@ -2,14 +2,15 @@ import random, time
 import tkinter as tk
 from PIL import Image, ImageTk
 
-# ensure pep 8 formatting
-# comment code
 # 1920x1080 resolution
+# player sprite sheet is from https://craftpix.net/freebies/free-shinobi-sprites-pixel-art/
+# enemy sprite sheets are from https://craftpix.net/freebies/free-werewolf-sprite-sheets-pixel-art/
+# game background images are from https://craftpix.net/freebies/free-mountain-backgrounds-pixel-art/
 window = tk.Tk()
 
 
 class AlienAnnihilator:
-    def __init__(self, window):
+    def __init__(self, master_window):
         self.BUTTON_WIDTH = 15
         self.BUTTON_HEIGHT = 2
         self.GROUND_HEIGHT = 889
@@ -31,7 +32,7 @@ class AlienAnnihilator:
 
         self.is_paused = False
 
-        self.master_window = window  # initialises master_window window
+        self.master_window = master_window  # initialises master_window window
         self.game_start = False  # the game loop doesn't initially run
 
         self.canvas = tk.Canvas(self.master_window, width=800, height=600)
@@ -46,9 +47,11 @@ class AlienAnnihilator:
                                             height=self.BUTTON_HEIGHT, command=self.show_leaderboard,
                                             font=("Arial Bold", 16))
         self.leaderboard_frame = None
+        self.bindings_label = None
         self.bindings_button = tk.Button(self.master_window, text="KEY BINDINGS", width=self.BUTTON_WIDTH,
                                          height=self.BUTTON_HEIGHT, command=self.show_key_bindings,
                                          font=("Arial Bold", 16))
+        self.bindings_frame = None
         self.quit_button = tk.Button(self.master_window, text="QUIT", width=self.BUTTON_WIDTH,
                                      height=self.BUTTON_HEIGHT, command=self.master_window.destroy,
                                      font=("Arial Bold", 16))
@@ -67,6 +70,8 @@ class AlienAnnihilator:
         self.name_entry = tk.Entry(self.master_window, width=30)
         self.submit_button = tk.Button(self.master_window, text="Submit", command=self.submit_name,
                                        font=("Arial Bold", 16))
+
+        self.key_sequence = ""
 
         self.player_states = {"Run": 8, "Jump": 12, "Dead": 4, "Walk": 8, "Idle": 6}
         self.player_state = "Run"
@@ -88,13 +93,18 @@ class AlienAnnihilator:
                                                                        self.enemy_width, self.enemy_height)))
                              for i in range(self.enemy_states.get(self.enemy_state))]
 
+        self.boss_image = ImageTk.PhotoImage(Image.open("images/boss_key.png"))
+
         self.background_images = []
         self.background_images.append(ImageTk.PhotoImage(Image.open("images/m8/first.png")))
         self.background_images.append(ImageTk.PhotoImage(Image.open("images/m8/second.png")))
         self.background_images.append(ImageTk.PhotoImage(Image.open("images/m8/third.png")))
-        self.background_image_ids = []
 
         self.platform_image = ImageTk.PhotoImage(Image.open("images/platformv3.png"))
+
+        self.god_mode = False
+        self.boss_mode = False
+        self.boss_id = None
 
         self.menu()
 
@@ -109,11 +119,9 @@ class AlienAnnihilator:
             for image in self.background_images:
                 self.canvas.create_image((0, 0), image=image, anchor="nw")
             for i in range(0, 4):
-                self.canvas.create_image((i * self.platform_image.width(), (4 * self.canvas.winfo_height() / 5) + 25),
+                self.canvas.create_image((i * self.platform_image.width(),
+                                          (4 * self.canvas.winfo_height() / 5) + 25),
                                          image=self.platform_image, anchor="nw")
-        else:
-            # Code to set the background for the menu screen
-            pass
 
     def menu(self, event=None):
         self.is_paused = False
@@ -167,7 +175,7 @@ class AlienAnnihilator:
 
     def left(self, event):
         if (self.player.get_state() == "Run" or self.player.get_state() == "Idle")\
-                and self.player.get_state() != "Dead":
+                and self.player.get_state() != "Dead" and not self.is_paused:
             self.player.set_state("Walk")
             self.player.set_current_frame(8)
             self.player.set_sprite_frames()
@@ -177,7 +185,7 @@ class AlienAnnihilator:
 
     def right(self, event):
         if (self.player.get_state() == "Walk" or self.player.get_state() == "Idle")\
-                and self.player.get_state() != "Dead":
+                and self.player.get_state() != "Dead" and not self.is_paused:
             self.player.set_state("Run")
             self.player.set_current_frame(8)
             self.player.set_sprite_frames()
@@ -186,7 +194,7 @@ class AlienAnnihilator:
             self.player.set_horizontal_velocity(self.player.get_speed())
 
     def up(self, event):
-        if not self.player.get_is_jumping() and self.player.get_state() != "Dead":
+        if not self.player.get_is_jumping() and self.player.get_state() != "Dead" and not self.is_paused:
             self.player.set_state("Jump")
             self.player.set_sprite_frames()
             self.player.set_current_frame(0)
@@ -213,12 +221,12 @@ class AlienAnnihilator:
         # self.master_window.bind(f"<{self.up}>", self.up)
         # self.master_window.bind(f"<{self.pause}>", self.pause)
         # self.master_window.bind(f"<{self.boss}>", self.on_boss_key)
-        # self.master_window.bind(f"<{self.cheat}>", self.cheat)
         self.master_window.bind("<Left>", self.left)
         self.master_window.bind("<Right>", self.right)
         self.master_window.bind("<Up>", self.up)
         self.master_window.bind("<Escape>", self.pause)
-        # self.time = 105
+        self.master_window.bind("<b>", self.on_boss_key)
+        self.master_window.bind("<Key>", self.key_pressed)
 
         self.master_window.after(10, self.generate_enemies)
         self.master_window.after(10, self.game_loop)
@@ -226,6 +234,37 @@ class AlienAnnihilator:
         self.master_window.after(1000, self.update_time)
         self.master_window.after(15000, self.increase_difficulty)
         # self.master_window.after(2000, self.game_over)
+
+    def key_pressed(self, event):
+        self.key_sequence += event.char
+
+        if self.key_sequence.__contains__("cheat"):
+            if self.god_mode:
+                self.god_mode = False
+            else:
+                self.god_mode = True
+            self.key_sequence = ""
+
+    def on_boss_key(self, event):
+        if self.boss_mode:
+            self.canvas.delete(self.boss_id)
+            self.player.resume()
+            for enemy in self.enemies:
+                enemy.resume()
+            self.is_paused = False
+            self.boss_mode = False
+            self.time_label = tk.Label(self.master_window, text=str(self.time), fg="white", bg="black", bd=0,
+                                   font=("Arial Bold", 64))
+            self.time_label.place(relx=0.5, rely=0.2, anchor="center")
+            self.master_window.after(1000, self.update_time)
+        else:
+            self.is_paused = True
+            self.player.pause()
+            for enemy in self.enemies:
+                enemy.pause()
+            self.time_label.destroy()
+            self.boss_id = self.canvas.create_image((0, 0), image=self.boss_image, anchor="nw")
+            self.boss_mode = True
 
     def input_name(self):
         self.canvas.delete("all")
@@ -257,6 +296,10 @@ class AlienAnnihilator:
             self.player.update()
             for enemy in self.enemies:
                 enemy.update()
+                bbox = self.canvas.bbox(enemy.get_id())
+                if bbox is not None:
+                    if bbox[2] - 45 <= 0:
+                        self.delete_enemy(enemy)
             self.check_collisions()
             self.master_window.after(10, self.game_loop)
 
@@ -293,8 +336,8 @@ class AlienAnnihilator:
                 else:
                     state = "Run"
             elif self.time >= 45:
-                type = random.randint(1, 2)
-                state = "Run"
+                 type = random.randint(1, 2)
+                 state = "Run"
             elif self.time >= 30:
                 type = random.randint(1, 2)
                 if type == 2:
@@ -302,17 +345,16 @@ class AlienAnnihilator:
                 else:
                     state = "Run"
             elif self.time >= 15:
-                type = 1
-                state = "Run"
+                 type = 1
+                 state = "Run"
             else:
-                type = 1
-                state = "Walk"
+                 type = 1
+                 state = "Walk"
 
             enemy = Enemy(self.canvas, self.enemies, state, type, self.enemy_frames, self.enemy_speed)
 
             self.enemies.append(enemy)
             self.master_window.after(100, enemy.animate)
-            self.master_window.after(18000, lambda: self.delete_enemy(enemy))
             self.master_window.after(random.randint(self.enemy_spawn_range[0], self.enemy_spawn_range[1]),
                                      self.generate_enemies)
 
@@ -396,10 +438,36 @@ class AlienAnnihilator:
         self.menu()
 
     def show_key_bindings(self):
-        pass
+        self.canvas.delete("all")
+        self.canvas.config(bg="black")
+
+        self.bindings_frame = tk.Frame(self.master_window, bg="black")
+        self.bindings_frame.place(relx=0.5, rely=0.5, anchor="center")
+
+        self.bindings_label = tk.Label(self.master_window, text="KEY BINDINGS", fg="white", bg="black",
+                                          font=("Arial Bold", 64))
+        self.bindings_label.place(relx=0.5, rely=0.2, anchor="center")
+
+        bindings_canvas = tk.Canvas(self.bindings_frame, bg="black", width=500, height=400)
+
+        bindings_canvas.pack(side="left", fill="both", expand=True)
+
+        inner_frame = tk.Frame(bindings_canvas, bg="black")
+        bindings_canvas.create_window((0, 0), window=inner_frame, anchor="nw")
+
+        back_button = tk.Button(self.bindings_frame, text="Back to Menu", command=self.clear_bindings,
+                                width=self.BUTTON_WIDTH, height=self.BUTTON_HEIGHT, font=("Arial Bold", 16))
+        back_button.place(relx=0.5, rely=0.9, anchor="center")
+
+        inner_frame.update_idletasks()
+
+    def clear_bindings(self):
+        self.bindings_label.destroy()
+        self.bindings_frame.destroy()
+        self.menu()
 
     def check_collisions(self):
-        if self.player is not None and not self.is_paused:
+        if self.player is not None and not self.is_paused and not self.god_mode:
             player_bbox = self.canvas.bbox(self.player.get_id())
             for enemy in self.enemies:
                 enemy_bbox = self.canvas.bbox(enemy.get_id())
@@ -455,6 +523,7 @@ class Player:
         self.is_jumping = False
         self.is_paused = False
         self.is_falling = False
+        self.animation_interval = None
 
     def update(self):
         bbox = self.canvas.bbox(self.id)
@@ -499,6 +568,8 @@ class Player:
 
     def pause(self):
         self.is_paused = True
+        if self.animation_interval is not None:
+            self.canvas.after_cancel(self.animation_interval)
 
     def resume(self):
         self.is_paused = False
@@ -519,7 +590,7 @@ class Player:
             else:
                 self.current_frame = (self.current_frame + 1) % len(self.sprite_frames)
             self.canvas.itemconfig(self.id, image=self.sprite_frames[self.current_frame])
-            self.canvas.after(100, self.animate)
+            self.animation_interval = self.canvas.after(100, self.animate)
 
     def get_is_jumping(self):
         return self.is_jumping
@@ -578,6 +649,7 @@ class Enemy:
                                                                          self.width, self.height)))
                               for i in range(self.states.get(self.state))]
         self.current_frame = 0
+        self.animation_interval = None
 
     def update(self):
         if not self.is_paused:
@@ -585,6 +657,8 @@ class Enemy:
 
     def pause(self):
         self.is_paused = True
+        if self.animation_interval is not None:
+            self.canvas.after_cancel(self.animation_interval)
 
     def resume(self):
         self.is_paused = False
@@ -595,7 +669,7 @@ class Enemy:
             self.current_frame = (self.current_frame - 1) % len(self.sprite_frames)
             image = self.sprite_frames[self.current_frame]
             self.canvas.itemconfig(self.id, image=image)
-            self.canvas.after(100, self.animate)
+            self.animation_interval = self.canvas.after(100, self.animate)
 
     def get_state(self):
         return self.state
@@ -606,7 +680,9 @@ class Enemy:
     def set_state(self, state):
         self.state = state
 
-
+# add labels and buttons with labels on them
+# when button is pressed, any key is bounded to a method for that button, which
+# overwrites the current key on the label of the button and changes that key bind
 game = AlienAnnihilator(window)
 window.mainloop()  # tells Python to run the Tkinter event loop.
 # This method listens for events, such as button clicks or key presses,
