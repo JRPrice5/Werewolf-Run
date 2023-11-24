@@ -1,0 +1,5 @@
+enemy_spawn_range*[4500, 6500]
+time*14
+player_position*[1475.9999999999966, 769.0]
+enemy_positions*[[735.0, 705.0], [1228.0, 705.0], [1763.0, 705.0]]
+enemy_states*[['Walk', 1, -1], ['Walk', 1, -1], ['Walk', 1, -1]]

@@ -19,7 +19,7 @@ class AlienAnnihilator:
         self.time = 0
 
         self.enemies = []
-        self.enemy_spawn_range = [2500, 4000]
+        self.enemy_spawn_range = [4500, 6500]
         self.enemy_speed = -1
 
         self.pause_label_id = None
@@ -41,7 +41,7 @@ class AlienAnnihilator:
         self.start_button = tk.Button(self.master_window, text="START GAME", width=self.BUTTON_WIDTH,
                                       height=self.BUTTON_HEIGHT, command=self.input_name, font=("Arial Bold", 16))
         self.load_button = tk.Button(self.master_window, text="LOAD GAME", width=self.BUTTON_WIDTH,
-                                      height=self.BUTTON_HEIGHT, command=None, font=("Arial Bold", 16))
+                                      height=self.BUTTON_HEIGHT, command=self.load_game, font=("Arial Bold", 16))
         self.leaderboard_label = None
         self.leaderboard_button = tk.Button(self.master_window, text="LEADERBOARD", width=self.BUTTON_WIDTH,
                                             height=self.BUTTON_HEIGHT, command=self.show_leaderboard,
@@ -58,7 +58,7 @@ class AlienAnnihilator:
         self.menu_button = tk.Button(self.master_window, text="MENU", width=self.BUTTON_WIDTH,
                                      height=self.BUTTON_HEIGHT, command=self.menu, font=("Arial Bold", 16))
         self.save_button = tk.Button(self.master_window, text="SAVE", width=self.BUTTON_WIDTH,
-                                     height=self.BUTTON_HEIGHT, command=None, font=("Arial Bold", 16))
+                                     height=self.BUTTON_HEIGHT, command=self.save_game, font=("Arial Bold", 16))
         self.resume_button = tk.Button(self.master_window, text="RESUME", width=self.BUTTON_WIDTH,
                                        height=self.BUTTON_HEIGHT, command=self.resume, font=("Arial Bold", 16))
         self.time_label = tk.Label(self.master_window, text="0", fg="white", bg="black", bd=0,
@@ -82,9 +82,11 @@ class AlienAnnihilator:
         self.player_frames = [ImageTk.PhotoImage(self.player_sheet.crop((i * self.player_width, 0, (i + 1) *
                                                                          self.player_width, self.player_height)))
                               for i in range(self.player_states.get(self.player_state))]
+        self.player_position = [0, 0]
 
-        self.enemy_states = {"Run": 9, "walk": 11}
-        self.enemy_state = "walk"
+        self.enemy_states = {"Run": 9, "Walk": 11}
+        self.enemy_types = ["White_Werewolf", "Black_Werewolf", "Red_Werewolf"]
+        self.enemy_state = "Walk"
         self.enemy_sheet_path = f"images/Black_Werewolf/{self.enemy_state}.png"
         self.enemy_sheet = Image.open(self.enemy_sheet_path)
         self.enemy_width = self.enemy_sheet.width // self.enemy_states.get(self.enemy_state)
@@ -92,6 +94,7 @@ class AlienAnnihilator:
         self.enemy_frames = [ImageTk.PhotoImage(self.enemy_sheet.crop((i * self.enemy_width, 0, (i + 1) *
                                                                        self.enemy_width, self.enemy_height)))
                              for i in range(self.enemy_states.get(self.enemy_state))]
+        self.enemy_position = [0, 0]
 
         self.boss_image = ImageTk.PhotoImage(Image.open("images/boss_key.png"))
 
@@ -156,7 +159,7 @@ class AlienAnnihilator:
             self.pause_label_id = self.canvas.create_text(960, 350, text="PAUSE MENU", fill="white",
                                                           font=("Arial Bold", 40))
             self.resume_button_id = self.canvas.create_window(960, 450, window=self.resume_button)
-            self.menu_button_id = self.canvas.create_window(960, 525, window=self.save_button)
+            self.save_button_id = self.canvas.create_window(960, 525, window=self.save_button)
             self.menu_button_id = self.canvas.create_window(960, 600, window=self.menu_button)
             self.quit_button_id = self.canvas.create_window(960, 675, window=self.quit_button)
 
@@ -166,6 +169,7 @@ class AlienAnnihilator:
             self.canvas.delete(self.resume_button_id)
             self.canvas.delete(self.menu_button_id)
             self.canvas.delete(self.quit_button_id)
+            self.canvas.delete(self.save_button_id)
             self.player.resume()
             for enemy in self.enemies:
                 enemy.resume()
@@ -214,7 +218,12 @@ class AlienAnnihilator:
         self.game_start = True
         self.time_label = tk.Label(self.master_window, text="0", fg="white", bg="black", font=("Arial Bold", 64))
         self.time_label.place(relx=0.5, rely=0.2, anchor="center")
-        self.player = Player(self.canvas, self.player_frames)
+        if self.player is None:
+            sprite_sheet_path = f"images/Shinobi/{self.player_state}.png"
+            sprite_sheet = Image.open(sprite_sheet_path)
+            height = sprite_sheet.height
+            spawn_position = [0, (4 * self.canvas.winfo_height() / 5) + 33 - height]
+            self.player = Player(self.canvas, self.player_frames, spawn_position)
 
         # self.master_window.bind(f"<{self.left}>", self.left)
         # self.master_window.bind(f"<{self.right}>", self.right)
@@ -351,7 +360,13 @@ class AlienAnnihilator:
                  type = 1
                  state = "Walk"
 
-            enemy = Enemy(self.canvas, self.enemies, state, type, self.enemy_frames, self.enemy_speed)
+            sprite_sheet_path = f"images/{self.enemy_types[type-1]}/{state}.png"
+            sprite_sheet = Image.open(sprite_sheet_path).transpose(Image.FLIP_LEFT_RIGHT)
+            width = sprite_sheet.width // self.enemy_states.get(state)
+            height = sprite_sheet.height
+            x = self.canvas.winfo_width() + width
+            y = (4 * self.canvas.winfo_height() / 5) + 33 - height
+            enemy = Enemy(self.canvas, state, type, self.enemy_frames, self.enemy_speed, (x, y))
 
             self.enemies.append(enemy)
             self.master_window.after(100, enemy.animate)
@@ -387,7 +402,7 @@ class AlienAnnihilator:
             name, time = line.strip().split(",")
             leaderboard[name] = int(time)
 
-        leaderboard[self.name.upper()] = self.time
+        leaderboard[self.name] = self.time
 
         file = open("leaderboard.txt", "w")
         for entry in sorted(leaderboard.items(), key=lambda x: x[1], reverse=True):
@@ -499,10 +514,81 @@ class AlienAnnihilator:
                 self.player.update()
                 self.master_window.after(10, self.player_fall)
 
+    def save_game(self):
+        enemy_states = []
+        enemy_positions = []
+        for enemy in self.enemies:
+            enemy_states.append([enemy.get_state(), enemy.get_type_number(), enemy.get_speed()])
+            enemy_positions.append(enemy.get_position())
+        game_state = {
+            "enemy_spawn_range": self.enemy_spawn_range,
+            "time": self.time,
+            "player_position": self.player.get_position(),
+            "enemy_positions": enemy_positions,
+            "enemy_states": enemy_states
+        }
+        file = open("game_state.txt", "w")
+        for entry in game_state.items():
+            file.write(f"{entry[0]}*{entry[1]}\n")
+        
+
+    def load_game(self):
+        game_state = {}
+        file = open("game_state.txt", "r")
+        if file.read() != "":
+            file = open("game_state.txt", "r")
+            for line in file:
+                key, value = line.strip().split("*")
+                game_state[key] = value
+            self.enemy_spawn_range = game_state.get("enemy_spawn_range")
+            self.time = int(game_state.get("time"))
+            player_positions = game_state.get("player_position").strip().split(",")
+            player_position = []
+            for position in player_positions:
+                formatted_position = position.strip().replace("[", "").replace("]", "").replace("'","")
+                player_position.append(float(formatted_position))
+            print(player_position)
+
+            enemy_positions = game_state.get("enemy_positions").strip().split(",")
+            i = 0
+            for position in enemy_positions:
+                formatted_position = position.strip().replace("[", "").replace("]", "").replace("'","")
+                enemy_positions[i] = formatted_position
+                i += 1
+                # print(position)
+            # print(enemy_positions)
+
+            enemy_positions_2d = []
+            for i in range(0, len(enemy_positions) - 1, 2):
+                temp = [float(enemy_positions[i]), float(enemy_positions[i + 1])]
+                enemy_positions_2d.append(temp)
+            # print(enemy_positions_2d)
+
+            enemy_states = game_state.get("enemy_states").strip().split(",")
+            i = 0
+            for state in enemy_states:
+                formatted_state = state.strip().replace("[", "").replace("]", "").replace("'","")
+                enemy_states[i] = formatted_state
+                i += 1
+
+            enemy_states_2d = []
+            for i in range(0, len(enemy_states) - 1, 3):
+                temp = [enemy_states[i], enemy_states[i + 1], enemy_states[i + 2]]
+                enemy_states_2d.append(temp)
+
+            self.player = Player(self.canvas, self.player_frames, player_position)
+            self.start_game()
+
+            i = 0
+            for state in enemy_states_2d:
+                # print(self.enemy_position)
+                enemy = Enemy(self.canvas, state[0], int(state[1]), self.enemy_frames, int(state[2]), enemy_positions_2d[i])
+                self.enemies.append(enemy)
+                i += 1
 
 
 class Player:
-    def __init__(self, canvas, sprite_frames):
+    def __init__(self, canvas, sprite_frames, spawn_position):
         self.canvas = canvas
         self.states = {"Run": 8, "Jump": 12, "Dead": 4, "Walk": 8, "Idle": 6}
         self.state = "Walk"
@@ -514,9 +600,10 @@ class Player:
                                                                          self.width, self.height)))
                               for i in range(self.states.get(self.state))]
         self.current_frame = 0
-        self.id = canvas.create_image(0, (4 * canvas.winfo_height() / 5) + 33 - self.height, anchor=tk.NW,
+        self.id = canvas.create_image(spawn_position[0], spawn_position[1], anchor=tk.NW,
                                       image=sprite_frames[0])
         self.velocity = [0, 0]
+        self.position = [0, 0]
         self.gravity = 0.5
         self.speed = 4
         self.jump_speed = -16
@@ -526,7 +613,8 @@ class Player:
         self.animation_interval = None
 
     def update(self):
-        bbox = self.canvas.bbox(self.id)
+        self.position = self.canvas.coords(self.get_id())
+        bbox = self.canvas.bbox(self.get_id())
         if not self.is_paused and self.state != "Dead":
             if bbox[3] >= ((4 * self.canvas.winfo_height() / 5) + 25) and self.velocity[1] >= 0:
                 self.velocity[1] = 0
@@ -604,6 +692,9 @@ class Player:
     def get_speed(self):
         return self.speed
 
+    def get_position(self):
+        return self.position
+
     def set_horizontal_velocity(self, v):
         self.velocity[0] = v
 
@@ -629,21 +720,22 @@ class Player:
 
 
 class Enemy:
-    def __init__(self, canvas, enemies, state, sprite_type, sprite_frames, speed):
-        enemies.append(self)
+    def __init__(self, canvas, state, sprite_type_number, sprite_frames, speed, spawn_coords):
         self.is_paused = False
         self.canvas = canvas
         self.speed = speed
+        self.position = [0, 0]
         self.states = {"Run": 9, "Walk": 11}
         self.types = ["White_Werewolf", "Black_Werewolf", "Red_Werewolf"]
-        self.type = self.types[sprite_type-1]
+        self.type_number = sprite_type_number
+        self.type = self.types[sprite_type_number-1]
         self.state = state
         self.sprite_sheet_path = f"images/{self.type}/{self.state}.png"
         self.sprite_sheet = Image.open(self.sprite_sheet_path).transpose(Image.FLIP_LEFT_RIGHT)
         self.width = self.sprite_sheet.width // self.states.get(self.state)
         self.height = self.sprite_sheet.height
-        self.id = canvas.create_image(canvas.winfo_width() + self.width, (4 * canvas.winfo_height() / 5) + 33 -
-                                      self.height, anchor=tk.NW, image=sprite_frames[0])
+        self.spawn_coords = spawn_coords
+        self.id = canvas.create_image(spawn_coords[0], spawn_coords[1], anchor=tk.NW, image=sprite_frames[0])
 
         self.sprite_frames = [ImageTk.PhotoImage(self.sprite_sheet.crop((i * self.width, 0, (i + 1) *
                                                                          self.width, self.height)))
@@ -654,6 +746,10 @@ class Enemy:
     def update(self):
         if not self.is_paused:
             self.canvas.move(self.id, self.speed, 0)
+            # x0, y0, x1, y1 = self.canvas.coords(self.get_id())
+            # self.position[0] = x0 + ((x1 - x0) / 2)
+            # self.position[1] = y0 + ((y1 - y0) / 2)
+            self.position = self.canvas.coords(self.get_id())
 
     def pause(self):
         self.is_paused = True
@@ -671,8 +767,20 @@ class Enemy:
             self.canvas.itemconfig(self.id, image=image)
             self.animation_interval = self.canvas.after(100, self.animate)
 
+    def get_type(self):
+        return self.type
+
+    def get_type_number(self):
+        return self.type_number
+
     def get_state(self):
         return self.state
+    
+    def get_speed(self):
+        return self.speed
+
+    def get_position(self):
+        return self.position
 
     def get_id(self):
         return self.id
